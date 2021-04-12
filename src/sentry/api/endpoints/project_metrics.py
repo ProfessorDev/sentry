@@ -16,15 +16,12 @@ class ProjectMetricsEndpoint(ProjectEndpoint):
 class ProjectMetricsTagsEndpoint(ProjectEndpoint):
     """ Get all existing tag values for a metric """
 
-    def get(self, request, project):
+    def get(self, request, project, metric_name, tag_name):
 
         try:
-            metric_name = request.GET["metric"]
-            tag_name = request.GET["tag"]
-        except KeyError:
-            return Response({"detail": "`metric` and `tag` are required parameters."}, status=400)
-
-        tag_values = DATA_SOURCE.get_tag_values(project, metric_name, tag_name)
+            tag_values = DATA_SOURCE.get_tag_values(project, metric_name, tag_name)
+        except InvalidParams as exc:
+            raise (ParseError(detail=str(exc)))
 
         return Response(tag_values, status=200)
 
