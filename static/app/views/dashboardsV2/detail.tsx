@@ -58,8 +58,6 @@ class DashboardDetail extends React.Component<Props, State> {
     window.removeEventListener('beforeunload', this.onUnload);
   }
 
-<<<<<<< HEAD
-=======
   checkStateRoute() {
     if (this.isWidgetBuilderRouter && !this.isEditing) {
       const {router, organization, params} = this.props;
@@ -83,7 +81,6 @@ class DashboardDetail extends React.Component<Props, State> {
     );
   }
 
->>>>>>> wip
   onEdit = (dashboard: State['modifiedDashboard']) => () => {
     if (!dashboard) {
       return;
@@ -316,8 +313,6 @@ class DashboardDetail extends React.Component<Props, State> {
     });
   };
 
-<<<<<<< HEAD
-=======
   updateRoute() {
     if (this.isWidgetBuilderRouter) {
       const {router, organization, params} = this.props;
@@ -404,7 +399,6 @@ class DashboardDetail extends React.Component<Props, State> {
       : children;
   }
 
->>>>>>> wip
   render() {
     const {api, location, params, organization} = this.props;
     const {modifiedDashboard, dashboardState} = this.state;
@@ -430,47 +424,10 @@ class DashboardDetail extends React.Component<Props, State> {
           organization={organization}
         >
           {({dashboard, dashboards, error, reloadData}) => {
-<<<<<<< HEAD
-            return (
-              <React.Fragment>
-                <StyledPageHeader>
-                  <DashboardTitle
-                    dashboard={modifiedDashboard || dashboard}
-                    onUpdate={this.setModifiedDashboard}
-                    isEditing={isEditing}
-                  />
-                  <Controls
-                    organization={organization}
-                    dashboards={dashboards}
-                    dashboard={dashboard}
-                    onEdit={this.onEdit(dashboard)}
-                    onCreate={this.onCreate}
-                    onCancel={this.onCancel}
-                    onCommit={this.onCommit({dashboard, reloadData})}
-                    onDelete={this.onDelete(dashboard)}
-                    dashboardState={dashboardState}
-                  />
-                </StyledPageHeader>
-                {error ? (
-                  <NotFound />
-                ) : dashboard ? (
-                  <Dashboard
-                    dashboard={modifiedDashboard || dashboard}
-                    organization={organization}
-                    isEditing={isEditing}
-                    onUpdate={this.onWidgetChange}
-                  />
-                ) : (
-                  <LoadingIndicator />
-                )}
-              </React.Fragment>
-            );
-=======
             if (this.isEditing && this.isWidgetBuilderRouter) {
               return this.renderWidgetBuilder(dashboard);
             }
             return this.renderDetails({dashboard, dashboards, error, reloadData});
->>>>>>> wip
           }}
         </OrgDashboards>
       </GlobalSelectionHeader>
