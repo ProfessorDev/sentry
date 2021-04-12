@@ -17,8 +17,7 @@ from sentry.snuba.sessions_v2 import (  # TODO: unite metrics and sessions_v2
     to_timestamp,
 )
 
-FIELD_REGEX = re.compile(r"^(\w+)\(((\w|\.|_)+)\)$")
-TAG_REGEX = re.compile(r"^(\w|\.|_)+$")
+FIELD_REGEX = re.compile(r"^(\w+)\(((\w|\.)+)\)$")
 
 OPERATIONS = (
     "avg",
@@ -49,26 +48,6 @@ def parse_field(field: str) -> Tuple[str, str]:
             )
 
         return operation, metric_name
-
-
-
-
-def parse_tag(tag_string: str) -> dict:
-    try:
-        name, value = tag_string.split(":")
-    except ValueError:
-        raise InvalidParams(f"Expected something like 'foo:\"bar\"' for tag, got '{tag_string}'")
-
-    return (verify_tag_name(name), value.strip('"'))
-
-
-def parse_query(query_string: str) -> dict:
-    return {
-        "or": [
-            {"and": [parse_tag(and_part) for and_part in or_part.split(" and ")]}
-            for or_part in query_string.split(" or ")
-        ]
-    }
 
 
 MAX_POINTS = 1000
@@ -102,10 +81,13 @@ def get_constrained_date_range(
     now = datetime.now(tz=pytz.utc)
 
     # if `end` is explicitly given, we add a second to it, so it is treated as
+    # inclusive. the rounding logic down below will take care of the rest.
     if params.get("end"):
         end += timedelta(seconds=1)
+
     date_range = end - start
     # round the range up to a multiple of the interval.
+    # the minimum is 1h so the "totals" will not go out of sync, as they will
     # use the materialized storage due to no grouping on the `started` column.
     # NOTE: we can remove the difference between `interval` / `rounding_interval`
     # as soon as snuba can provide us with grouped totals in the same query
@@ -237,20 +219,6 @@ class MockDataSource:
 
         return [dict(name=name, **metric) for name, metric in self._metrics.items()]
 
-    def _verify_query(self, query: QueryDefinition):
-        # TODO: this will probably be dropped in favor of an Open World assumption,
-        #       i.e., every tag/value combination is assumed to exist
-        if not query.query:
-            return
-
-        filter_ = parse_query(query.query)
-        for conditions in filter_["or"]:
-            for tag_name, tag_value in conditions["and"]:
-                if tag_name not in self._tags:
-                    raise InvalidParams(f"Unknown tag '{tag_name}'")
-                if tag_value not in self._tags[tag_name]:
-                    raise InvalidParams(f"Unknown tag value '{tag_value}' for tag '{tag_name}'")
-
     def _generate_series(self, fields: dict, intervals: List[datetime]) -> dict:
 
         series = {}
@@ -279,18 +247,23 @@ class MockDataSource:
 
     def get_series(self, query: QueryDefinition) -> dict:
         """ Get time series for the given query """
-
         intervals = list(query.get_intervals())
-
-        self._verify_query(query)
 
         for tag_name in query.groupby:
             if tag_name not in self._tags:
                 raise InvalidParams(f"Unknown tag '{tag_name}'")
         tags = [
             [(tag_name, tag_value) for tag_value in self._tags[tag_name]]
+            for tag_name in query.groupby
+        ]
+
+        return {
+            "start": query.start,
+            "end": query.end,
+            "query": query.query,
             "intervals": intervals,
             "groups": [
+                dict(
                     by={tag_name: tag_value for tag_name, tag_value in combination},
                     **self._generate_series(query.fields, intervals),
                 )
