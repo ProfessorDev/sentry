@@ -19,6 +19,7 @@ from sentry.snuba.sessions_v2 import (  # TODO: unite metrics and sessions_v2
 
 FIELD_REGEX = re.compile(r"^(\w+)\(((\w|\.|_)+)\)$")
 TAG_REGEX = re.compile(r"^(\w|\.|_)+$")
+FIELD_REGEX = re.compile(r"^(\w+)\(((\w|\.)+)\)$")
 
 OPERATIONS = (
     "avg",
