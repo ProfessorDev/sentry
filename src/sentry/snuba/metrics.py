@@ -17,8 +17,7 @@ from sentry.snuba.sessions_v2 import (  # TODO: unite metrics and sessions_v2
     to_timestamp,
 )
 
-FIELD_REGEX = re.compile(r"^(\w+)\(((\w|\.|_)+)\)$")
-TAG_REGEX = re.compile(r"^(\w|\.|_)+$")
+FIELD_REGEX = re.compile(r"^(\w+)\(((\w|\.)+)\)$")
 
 OPERATIONS = (
     "avg",
@@ -49,32 +48,6 @@ def parse_field(field: str) -> Tuple[str, str]:
             )
 
         return operation, metric_name
-
-
-def verify_tag_name(name: str) -> str:
-
-    if not TAG_REGEX.match(name):
-        raise InvalidParams(f"Invalid tag name: '{name}'")
-
-    return name
-
-
-def parse_tag(tag_string: str) -> dict:
-    try:
-        name, value = tag_string.split(":")
-    except ValueError:
-        raise InvalidParams(f"Expected something like 'foo:\"bar\"' for tag, got '{tag_string}'")
-
-    return (verify_tag_name(name), value.strip('"'))
-
-
-def parse_query(query_string: str) -> dict:
-    return {
-        "or": [
-            {"and": [parse_tag(and_part) for and_part in or_part.split(" and ")]}
-            for or_part in query_string.split(" or ")
-        ]
-    }
 
 
 MAX_POINTS = 1000
@@ -246,18 +219,6 @@ class MockDataSource:
 
         return [dict(name=name, **metric) for name, metric in self._metrics.items()]
 
-    def _verify_query(self, query: QueryDefinition):
-        # TODO: this will probably be dropped in favor of an Open World assumption,
-        #       i.e., every tag/value combination is assumed to exist
-
-        filter_ = parse_query(query.query)
-        for conditions in filter_["or"]:
-            for tag_name, tag_value in conditions["and"]:
-                if tag_name not in self._tags:
-                    raise InvalidParams(f"Unknown tag '{tag_name}'")
-                if tag_value not in self._tags[tag_name]:
-                    raise InvalidParams(f"Unknown tag value '{tag_value}' for tag '{tag_name}'")
-
     def _generate_series(self, fields: dict, intervals: List[datetime]) -> dict:
 
         series = {}
@@ -286,38 +247,10 @@ class MockDataSource:
 
     def get_series(self, query: QueryDefinition) -> dict:
         """ Get time series for the given query """
-
         intervals = list(query.get_intervals())
-
-        self._verify_query(query)
 
         for tag_name in query.groupby:
             if tag_name not in self._tags:
                 raise InvalidParams(f"Unknown tag '{tag_name}'")
         tags = [
             [(tag_name, tag_value) for tag_value in self._tags[tag_name]]
-            for tag_name in query.groupby
-        ]
-
-        return {
-            "start": query.start,
-            "end": query.end,
-            "query": query.query,
-            "intervals": intervals,
-            "groups": [
-                dict(
-                    by={tag_name: tag_value for tag_name, tag_value in combination},
-                    **self._generate_series(query.fields, intervals),
-                )
-                for combination in itertools.product(*tags)
-            ]
-            if tags
-            else [dict(by={}, **self._generate_series(query.fields, intervals))],
-        }
-
-    def get_tag_values(self, project: Project, metric_name: str, tag_name: str) -> Dict[str, str]:
-        # Return same tag names for every metric for now:
-        return self._tags.get(tag_name, [])
-
-
-DATA_SOURCE = MockDataSource()

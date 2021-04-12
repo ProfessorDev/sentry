@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 class MockDataSource:
 
     _tags = {
@@ -49,6 +50,13 @@ class MockDataSource:
 
 
 DATA_SOURCE = MockDataSource()
+=======
+from rest_framework.exceptions import ParseError
+from rest_framework.response import Response
+
+from sentry.api.bases.project import ProjectEndpoint
+from sentry.snuba.metrics import DATA_SOURCE, InvalidField, InvalidParams, QueryDefinition
+>>>>>>> feat: Return mock time series for metrics (ignoring filter query for now)
 
 
 class ProjectMetricsEndpoint(ProjectEndpoint):
@@ -82,4 +90,11 @@ class ProjectMetricsDataEndpoint(ProjectEndpoint):
     """
 
     def get(self, request, project):
-        return Response("Hello world", status=200)
+
+        try:
+            query = QueryDefinition(request.GET, allow_minute_resolution=False)
+            data = DATA_SOURCE.get_series(query)
+        except (InvalidField, InvalidParams) as exc:
+            raise (ParseError(detail=str(exc)))
+
+        return Response(data, status=200)
