@@ -19,7 +19,6 @@ from sentry.snuba.sessions_v2 import (  # TODO: unite metrics and sessions_v2
 
 FIELD_REGEX = re.compile(r"^(\w+)\(((\w|\.|_)+)\)$")
 TAG_REGEX = re.compile(r"^(\w|\.|_)+$")
-FIELD_REGEX = re.compile(r"^(\w+)\(((\w|\.)+)\)$")
 
 OPERATIONS = (
     "avg",
@@ -190,12 +189,13 @@ class MockDataSource:
             "staging",
         ],
         "release": [  # High cardinality
-            f"{major}.{minor}.{bugfix}"
+            f"myapp@{major}.{minor}.{bugfix}"
             for major in range(3)
             for minor in range(13)
             for bugfix in range(4)
         ],
         "session.status": [
+            "abnormal",
             "crashed",
             "errored",
             "healthy",
@@ -248,8 +248,8 @@ class MockDataSource:
         return [dict(name=name, **metric) for name, metric in self._metrics.items()]
 
     def _verify_query(self, query: QueryDefinition):
-        # TODO: this will probably be dropped in favor of an Open World assumption,
-        #       i.e., every tag/value combination is assumed to exist
+        if not query.query:
+            return
 
         filter_ = parse_query(query.query)
         for conditions in filter_["or"]:
@@ -318,7 +318,13 @@ class MockDataSource:
 
     def get_tag_values(self, project: Project, metric_name: str, tag_name: str) -> Dict[str, str]:
         # Return same tag names for every metric for now:
-        return self._tags.get(tag_name, [])
+        if metric_name not in self._metrics:
+            raise InvalidParams(f"Unknown metric '{metric_name}'")
+
+        try:
+            return self._tags[tag_name]
+        except KeyError:
+            raise InvalidParams(f"Unknown tag '{tag_name}' for metric '{metric_name}'")
 
 
 DATA_SOURCE = MockDataSource()
