@@ -17,8 +17,7 @@ from sentry.snuba.sessions_v2 import (  # TODO: unite metrics and sessions_v2
     to_timestamp,
 )
 
-FIELD_REGEX = re.compile(r"^(\w+)\(((\w|\.|_)+)\)$")
-TAG_REGEX = re.compile(r"^(\w|\.|_)+$")
+FIELD_REGEX = re.compile(r"^(\w+)\(((\w|\.)+)\)$")
 
 OPERATIONS = (
     "avg",
@@ -51,61 +50,6 @@ def parse_field(field: str) -> Tuple[str, str]:
         return operation, metric_name
 
 
-def verify_tag_name(name: str) -> str:
-
-    if not TAG_REGEX.match(name):
-        raise InvalidParams(f"Invalid tag name: '{name}'")
-
-    return name
-
-
-def parse_tag(tag_string: str) -> dict:
-    try:
-        name, value = tag_string.split(":")
-    except ValueError:
-        raise InvalidParams(f"Expected something like 'foo:\"bar\"' for tag, got '{tag_string}'")
-
-    return (verify_tag_name(name), value.strip('"'))
-
-
-def parse_query(query_string: str) -> dict:
-    return {
-        "or": [
-            {"and": [parse_tag(and_part) for and_part in or_part.split(" and ")]}
-            for or_part in query_string.split(" or ")
-        ]
-    }
-
-
-MAX_POINTS = 1000
-ONE_DAY = timedelta(days=1).total_seconds()
-ONE_HOUR = timedelta(hours=1).total_seconds()
-ONE_MINUTE = timedelta(minutes=1).total_seconds()
-
-
-def get_constrained_date_range(
-    params, allow_minute_resolution=False
-) -> Tuple[datetime, datetime, int]:
-    interval = parse_stats_period(params.get("interval", "1h"))
-    interval = int(3600 if interval is None else interval.total_seconds())
-
-    smallest_interval = ONE_MINUTE if allow_minute_resolution else ONE_HOUR
-    if interval % smallest_interval != 0 or interval < smallest_interval:
-        interval_str = "one minute" if allow_minute_resolution else "one hour"
-        raise InvalidParams(
-            f"The interval has to be a multiple of the minimum interval of {interval_str}."
-        )
-
-    if interval > ONE_DAY:
-        raise InvalidParams("The interval has to be less than one day.")
-
-    if ONE_DAY % interval != 0:
-        raise InvalidParams("The interval should divide one day without a remainder.")
-
-    # using_minute_resolution = interval % ONE_HOUR != 0
-
-    start, end = get_date_range_from_params(params)
-    now = datetime.now(tz=pytz.utc)
 
     # if `end` is explicitly given, we add a second to it, so it is treated as
     # inclusive. the rounding logic down below will take care of the rest.
@@ -246,20 +190,6 @@ class MockDataSource:
 
         return [dict(name=name, **metric) for name, metric in self._metrics.items()]
 
-    def _verify_query(self, query: QueryDefinition):
-        # TODO: this will probably be dropped in favor of an Open World assumption,
-        #       i.e., every tag/value combination is assumed to exist
-        if not query.query:
-            return
-
-        filter_ = parse_query(query.query)
-        for conditions in filter_["or"]:
-            for tag_name, tag_value in conditions["and"]:
-                if tag_name not in self._tags:
-                    raise InvalidParams(f"Unknown tag '{tag_name}'")
-                if tag_value not in self._tags[tag_name]:
-                    raise InvalidParams(f"Unknown tag value '{tag_value}' for tag '{tag_name}'")
-
     def _generate_series(self, fields: dict, intervals: List[datetime]) -> dict:
 
         series = {}
@@ -288,13 +218,27 @@ class MockDataSource:
 
     def get_series(self, query: QueryDefinition) -> dict:
         """ Get time series for the given query """
-
         intervals = list(query.get_intervals())
-
-        self._verify_query(query)
 
         for tag_name in query.groupby:
             if tag_name not in self._tags:
                 raise InvalidParams(f"Unknown tag '{tag_name}'")
         tags = [
             [(tag_name, tag_value) for tag_value in self._tags[tag_name]]
+            "intervals": intervals,
+            "groups": [
+                    by={tag_name: tag_value for tag_name, tag_value in combination},
+                    **self._generate_series(query.fields, intervals),
+                )
+                for combination in itertools.product(*tags)
+            ]
+            if tags
+            else [dict(by={}, **self._generate_series(query.fields, intervals))],
+        }
+
+    def get_tag_values(self, project: Project, metric_name: str, tag_name: str) -> Dict[str, str]:
+        # Return same tag names for every metric for now:
+        return self._tags.get(tag_name, [])
+
+
+DATA_SOURCE = MockDataSource()
