@@ -13,6 +13,7 @@ import PickProjectToContinue from 'app/components/pickProjectToContinue';
 import Tooltip from 'app/components/tooltip';
 import {t} from 'app/locale';
 import {PageContent} from 'app/styles/organization';
+import space from 'app/styles/space';
 import {GlobalSelection, Organization, Project} from 'app/types';
 import {Theme} from 'app/utils/theme';
 import withGlobalSelection from 'app/utils/withGlobalSelection';
@@ -34,9 +35,14 @@ const newQuery = {
   tags: '',
   groupBy: '',
   aggregation: '',
+  legend: '',
 };
 
-type Props = RouteComponentProps<{}, {}> &
+type RouteParams = {
+  dashboardId: string;
+};
+
+type Props = RouteComponentProps<RouteParams, {}> &
   AsyncView['props'] & {
     theme: Theme;
     organization: Organization;
@@ -150,6 +156,10 @@ class MetricWidget extends AsyncView<Props, State> {
     return !projectId || typeof projectId !== 'string';
   }
 
+  async handleSave() {
+    //wip
+  }
+
   renderBody() {
     const {
       organization,
@@ -177,172 +187,170 @@ class MetricWidget extends AsyncView<Props, State> {
         <PickProjectToContinue
           router={router}
           projects={projects.map(p => ({id: p.id, slug: p.slug}))}
-          nextPath={`/organizations/${orgSlug}/dashboards/widget/new/?dataSet=metrics`}
+          nextPath={`/organizations/${orgSlug}/dashboards/${dashboardId}/widget/new/?dataSet=metrics`}
           noProjectRedirectPath={`/organizations/${orgSlug}/dashboards/`}
         />
       );
     }
 
     return (
-      <Wrapper>
-        <GlobalSelectionHeader
-          onUpdateProjects={this.handleProjectChange}
-          disableMultipleProjectSelection
-          skipLoadLastUsed
-        >
-          <StyledPageContent>
-            <Header
-              orgSlug={orgSlug}
-              title={title}
-              onChangeTitle={newTitle => this.handleFieldChange('title', newTitle)}
-              onSave={() => {}}
-            />
-            <Layout.Body>
-              <BuildSteps>
-                <BuildStep
-                  title={t('Choose your visualization')}
-                  description={t(
-                    'This is a preview of how your widget will appear in the dashboard.'
-                  )}
-                >
-                  <VisualizationWrapper>
-                    <StyledSelectField
-                      name="displayType"
-                      choices={Object.keys(displayTypes).map(value => [
-                        value,
-                        displayTypes[value],
-                      ])}
-                      value={displayType}
-                      onChange={(option: {label: string; value: DisplayType}) => {
-                        const isDisabled = option.value !== DisplayType.LINE;
-
-                        if (isDisabled) {
-                          return;
-                        }
-
-                        this.handleFieldChange('displayType', option.value);
-                      }}
-                      styles={{
-                        option: (provided, state) => {
-                          if (state.isDisabled) {
-                            return {
-                              ...provided,
-                              cursor: 'not-allowed',
-                              color: theme.disabled,
-                              ':hover': {
-                                background: 'transparent',
-                              },
-                            };
-                          }
-                          return provided;
-                        },
-                      }}
-                      components={{
-                        Option: ({
-                          label,
-                          data,
-                          ...optionProps
-                        }: OptionProps<{
-                          label: string;
-                          value: string;
-                        }>) => {
-                          const {value} = data;
-                          const isDisabled = value !== DisplayType.LINE;
-
-                          return (
-                            <Tooltip
-                              title={t('This option is not yet available')}
-                              containerDisplayMode="block"
-                              disabled={!isDisabled}
-                            >
-                              <components.Option
-                                {...optionProps}
-                                label={label}
-                                data={data}
-                                isDisabled={isDisabled}
-                              >
-                                {label}
-                              </components.Option>
-                            </Tooltip>
-                          );
-                        },
-                      }}
-                      inline={false}
-                      flexibleControlStateSize
-                      stacked
-                    />
-
-                    <Card
-                      router={router}
-                      location={location}
-                      selection={selection}
-                      organization={organization}
-                      api={this.api}
-                      project={project}
-                      widget={{
-                        title,
-                        queries,
-                        yAxis: metric?.name,
-                      }}
-                    />
-                  </VisualizationWrapper>
-                </BuildStep>
-                <ChooseDataSetStep value={DataSet.METRICS} onChange={onChangeDataSet} />
-                <BuildStep
-                  title={t('Choose your y-axis metric')}
-                  description={t('Determine what type of metric you want to graph by.')}
-                >
+      <GlobalSelectionHeader
+        onUpdateProjects={this.handleProjectChange}
+        disableMultipleProjectSelection
+        skipLoadLastUsed
+      >
+        <StyledPageContent>
+          <Header
+            orgSlug={orgSlug}
+            title={title}
+            onChangeTitle={newTitle => this.handleFieldChange('title', newTitle)}
+            onSave={this.handleSave}
+          />
+          <Layout.Body>
+            <BuildSteps>
+              <BuildStep
+                title={t('Choose your visualization')}
+                description={t(
+                  'This is a preview of how your widget will appear in the dashboard.'
+                )}
+              >
+                <VisualizationWrapper>
                   <StyledSelectField
-                    name="metric"
-                    choices={metrics.map(m => [m, m.name])}
-                    placeholder={t('Select metric')}
-                    onChange={this.handleMetricChange}
-                    value={metric}
+                    name="displayType"
+                    choices={Object.keys(displayTypes).map(value => [
+                      value,
+                      displayTypes[value],
+                    ])}
+                    value={displayType}
+                    onChange={(option: {label: string; value: DisplayType}) => {
+                      const isDisabled = option.value !== DisplayType.LINE;
+
+                      if (isDisabled) {
+                        return;
+                      }
+
+                      this.handleFieldChange('displayType', option.value);
+                    }}
+                    styles={{
+                      option: (provided, state) => {
+                        if (state.isDisabled) {
+                          return {
+                            ...provided,
+                            cursor: 'not-allowed',
+                            color: theme.disabled,
+                            ':hover': {
+                              background: 'transparent',
+                            },
+                          };
+                        }
+                        return provided;
+                      },
+                    }}
                     components={{
                       Option: ({
                         label,
+                        data,
                         ...optionProps
                       }: OptionProps<{
                         label: string;
                         value: string;
                       }>) => {
-                        const {selectProps} = optionProps;
-                        const {inputValue} = selectProps;
+                        const {value} = data;
+                        const isDisabled = value !== DisplayType.LINE;
 
                         return (
-                          <components.Option label={label} {...optionProps}>
-                            <Highlight text={inputValue ?? ''}>{label}</Highlight>
-                          </components.Option>
+                          <Tooltip
+                            title={t('This option is not yet available')}
+                            containerDisplayMode="block"
+                            disabled={!isDisabled}
+                          >
+                            <components.Option
+                              {...optionProps}
+                              label={label}
+                              data={data}
+                              isDisabled={isDisabled}
+                            >
+                              {label}
+                            </components.Option>
+                          </Tooltip>
                         );
                       },
                     }}
                     inline={false}
                     flexibleControlStateSize
                     stacked
-                    allowClear
                   />
-                </BuildStep>
-                <BuildStep
-                  title={t('Begin your search')}
-                  description={t('Add another query to compare projects, tags, etc.')}
-                >
-                  <Queries
+
+                  <Card
+                    router={router}
+                    location={location}
+                    selection={selection}
+                    organization={organization}
                     api={this.api}
-                    orgSlug={orgSlug}
-                    projectSlug={project.slug}
-                    metrics={metrics}
-                    metric={metric}
-                    queries={queries}
-                    onAddQuery={this.handleAddQuery}
-                    onRemoveQuery={this.handleRemoveQuery}
-                    onChangeQuery={this.handleChangeQuery}
+                    project={project}
+                    widget={{
+                      title,
+                      queries,
+                      yAxis: metric?.name,
+                    }}
                   />
-                </BuildStep>
-              </BuildSteps>
-            </Layout.Body>
-          </StyledPageContent>
-        </GlobalSelectionHeader>
-      </Wrapper>
+                </VisualizationWrapper>
+              </BuildStep>
+              <ChooseDataSetStep value={DataSet.METRICS} onChange={onChangeDataSet} />
+              <BuildStep
+                title={t('Choose your y-axis metric')}
+                description={t('Determine what type of metric you want to graph by.')}
+              >
+                <StyledSelectField
+                  name="metric"
+                  choices={metrics.map(m => [m, m.name])}
+                  placeholder={t('Select metric')}
+                  onChange={this.handleMetricChange}
+                  value={metric}
+                  components={{
+                    Option: ({
+                      label,
+                      ...optionProps
+                    }: OptionProps<{
+                      label: string;
+                      value: string;
+                    }>) => {
+                      const {selectProps} = optionProps;
+                      const {inputValue} = selectProps;
+
+                      return (
+                        <components.Option label={label} {...optionProps}>
+                          <Highlight text={inputValue ?? ''}>{label}</Highlight>
+                        </components.Option>
+                      );
+                    },
+                  }}
+                  inline={false}
+                  flexibleControlStateSize
+                  stacked
+                  allowClear
+                />
+              </BuildStep>
+              <BuildStep
+                title={t('Begin your search')}
+                description={t('Add another query to compare projects, tags, etc.')}
+              >
+                <Queries
+                  api={this.api}
+                  orgSlug={orgSlug}
+                  projectSlug={project.slug}
+                  metrics={metrics}
+                  metric={metric}
+                  queries={queries}
+                  onAddQuery={this.handleAddQuery}
+                  onRemoveQuery={this.handleRemoveQuery}
+                  onChangeQuery={this.handleChangeQuery}
+                />
+              </BuildStep>
+            </BuildSteps>
+          </Layout.Body>
+        </StyledPageContent>
+      </GlobalSelectionHeader>
     );
   }
 }

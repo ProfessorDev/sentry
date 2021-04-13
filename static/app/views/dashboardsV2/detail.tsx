@@ -12,9 +12,11 @@ import {
 import {addSuccessMessage} from 'app/actionCreators/indicator';
 import {Client} from 'app/api';
 import NotFound from 'app/components/errors/notFound';
+import LightWeightNoProjectMessage from 'app/components/lightWeightNoProjectMessage';
 import LoadingIndicator from 'app/components/loadingIndicator';
 import GlobalSelectionHeader from 'app/components/organizations/globalSelectionHeader';
 import {t} from 'app/locale';
+import {PageContent} from 'app/styles/organization';
 import space from 'app/styles/space';
 import {Organization} from 'app/types';
 import {trackAnalyticsEvent} from 'app/utils/analytics';
@@ -351,39 +353,53 @@ class DashboardDetail extends React.Component<Props, State> {
     const {modifiedDashboard, dashboardState} = this.state;
 
     return (
-      <React.Fragment>
-        <StyledPageHeader>
-          <DashboardTitle
-            dashboard={modifiedDashboard || dashboard}
-            onUpdate={this.setModifiedDashboard}
-            isEditing={this.isEditing}
-          />
-          <Controls
-            organization={organization}
-            dashboards={dashboards}
-            dashboard={dashboard}
-            onEdit={this.onEdit(dashboard)}
-            onCreate={this.onCreate}
-            onCancel={this.onCancel}
-            onCommit={this.onCommit({dashboard, reloadData})}
-            onDelete={this.onDelete(dashboard)}
-            dashboardState={dashboardState}
-          />
-        </StyledPageHeader>
-        {error ? (
-          <NotFound />
-        ) : dashboard ? (
-          <Dashboard
-            dashboardId={dashboardId}
-            dashboard={modifiedDashboard || dashboard}
-            organization={organization}
-            isEditing={this.isEditing}
-            onUpdate={this.onWidgetChange}
-          />
-        ) : (
-          <LoadingIndicator />
-        )}
-      </React.Fragment>
+      <GlobalSelectionHeader
+        skipLoadLastUsed={organization.features.includes('global-views')}
+        defaultSelection={{
+          datetime: {
+            start: null,
+            end: null,
+            utc: false,
+            period: DEFAULT_STATS_PERIOD,
+          },
+        }}
+      >
+        <PageContent>
+          <LightWeightNoProjectMessage organization={organization}>
+            <StyledPageHeader>
+              <DashboardTitle
+                dashboard={modifiedDashboard || dashboard}
+                onUpdate={this.setModifiedDashboard}
+                isEditing={this.isEditing}
+              />
+              <Controls
+                organization={organization}
+                dashboards={dashboards}
+                dashboard={dashboard}
+                onEdit={this.onEdit(dashboard)}
+                onCreate={this.onCreate}
+                onCancel={this.onCancel}
+                onCommit={this.onCommit({dashboard, reloadData})}
+                onDelete={this.onDelete(dashboard)}
+                dashboardState={dashboardState}
+              />
+            </StyledPageHeader>
+            {error ? (
+              <NotFound />
+            ) : dashboard ? (
+              <Dashboard
+                dashboardId={dashboardId}
+                dashboard={modifiedDashboard || dashboard}
+                organization={organization}
+                isEditing={this.isEditing}
+                onUpdate={this.onWidgetChange}
+              />
+            ) : (
+              <LoadingIndicator />
+            )}
+          </LightWeightNoProjectMessage>
+        </PageContent>
+      </GlobalSelectionHeader>
     );
   }
 
@@ -401,36 +417,21 @@ class DashboardDetail extends React.Component<Props, State> {
 
   render() {
     const {api, location, params, organization} = this.props;
-    const {modifiedDashboard, dashboardState} = this.state;
-
-    const isEditing = ['edit', 'create', 'pending_delete'].includes(dashboardState);
 
     return (
-      <GlobalSelectionHeader
-        skipLoadLastUsed={organization.features.includes('global-views')}
-        defaultSelection={{
-          datetime: {
-            start: null,
-            end: null,
-            utc: false,
-            period: DEFAULT_STATS_PERIOD,
-          },
-        }}
+      <OrgDashboards
+        api={api}
+        location={location}
+        params={params}
+        organization={organization}
       >
-        <OrgDashboards
-          api={api}
-          location={location}
-          params={params}
-          organization={organization}
-        >
-          {({dashboard, dashboards, error, reloadData}) => {
-            if (this.isEditing && this.isWidgetBuilderRouter) {
-              return this.renderWidgetBuilder(dashboard);
-            }
-            return this.renderDetails({dashboard, dashboards, error, reloadData});
-          }}
-        </OrgDashboards>
-      </GlobalSelectionHeader>
+        {({dashboard, dashboards, error, reloadData}) => {
+          if (this.isEditing && this.isWidgetBuilderRouter) {
+            return this.renderWidgetBuilder(dashboard);
+          }
+          return this.renderDetails({dashboard, dashboards, error, reloadData});
+        }}
+      </OrgDashboards>
     );
   }
 }

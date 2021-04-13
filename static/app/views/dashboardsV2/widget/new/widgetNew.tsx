@@ -77,11 +77,9 @@ function WidgetNew(props: Props) {
 
   if (!dataSet) {
     return (
-      <PageContent>
-        <Alert type="error" icon={<IconWarning />}>
-          {t('Data set not found.')}
-        </Alert>
-      </PageContent>
+      <Alert type="error" icon={<IconWarning />}>
+        {t('Data set not found.')}
+      </Alert>
     );
   }
 

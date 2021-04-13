@@ -51,10 +51,8 @@ type Props = AsyncView['props'] & {
   selection: GlobalSelection;
   tags: TagCollection;
   dashboard: DashboardDetails;
-  //onAddWidget: (data: Widget) => void;
   onSave: (widgets: Widget[]) => void;
   widget?: Widget;
-  //onUpdateWidget?: (nextWidget: Widget) => void;
 };
 
 type State = AsyncView['state'] & {
@@ -106,14 +104,7 @@ class EventWidget extends AsyncView<Props, State> {
   handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    const {
-      organization,
-      onSave,
-      dashboard,
-      // onAddWidget,
-      // onUpdateWidget,
-      // widget: previousWidget,
-    } = this.props;
+    const {organization, onSave, dashboard} = this.props;
     this.setState({loading: true});
     try {
       const widgetData: Widget = pick(this.state, [
@@ -125,16 +116,6 @@ class EventWidget extends AsyncView<Props, State> {
 
       await validateWidget(this.api, organization.slug, widgetData);
 
-      // if (typeof onUpdateWidget === 'function' && !!previousWidget) {
-      //   // onUpdateWidget({
-      //   //   id: previousWidget?.id,
-      //   //   ...widgetData,
-      //   // });
-      //   addSuccessMessage(t('Updated widget.'));
-      //   return;
-      // }
-
-      // onAddWidget(widgetData);
       onSave([...dashboard.widgets, widgetData]);
       addSuccessMessage(t('Added widget.'));
     } catch (err) {
@@ -159,43 +140,93 @@ class EventWidget extends AsyncView<Props, State> {
     }
 
     return (
-      <Wrapper>
-        <GlobalSelectionHeader
-          skipLoadLastUsed={organization.features.includes('global-views')}
-          defaultSelection={{
-            datetime: {
-              start: null,
-              end: null,
-              utc: false,
-              period: DEFAULT_STATS_PERIOD,
-            },
-          }}
-        >
-          <StyledPageContent>
-            <Header
-              orgSlug={orgSlug}
-              title={title}
-              onChangeTitle={newTitle => this.handleFieldChange('title', newTitle)}
-              onSave={this.handleSave}
-            />
-            <Layout.Body>
-              <BuildSteps>
-                <BuildStep
-                  title={t('Choose your visualization')}
-                  description={t(
-                    'This is a preview of how your widget will appear in the dashboard.'
-                  )}
-                >
-                  <VisualizationWrapper>
-                    <SelectControl
-                      name="displayType"
-                      options={Object.keys(displayTypes).map(value => ({
-                        label: displayTypes[value],
-                        value,
-                      }))}
-                      value={displayType}
-                      onChange={(option: {label: string; value: DisplayType}) => {
-                        this.handleFieldChange('displayType', option.value);
+      <GlobalSelectionHeader
+        skipLoadLastUsed={organization.features.includes('global-views')}
+        defaultSelection={{
+          datetime: {
+            start: null,
+            end: null,
+            utc: false,
+            period: DEFAULT_STATS_PERIOD,
+          },
+        }}
+      >
+        <StyledPageContent>
+          <Header
+            orgSlug={orgSlug}
+            title={title}
+            onChangeTitle={newTitle => this.handleFieldChange('title', newTitle)}
+            onSave={this.handleSave}
+          />
+          <Layout.Body>
+            <BuildSteps>
+              <BuildStep
+                title={t('Choose your visualization')}
+                description={t(
+                  'This is a preview of how your widget will appear in the dashboard.'
+                )}
+              >
+                <VisualizationWrapper>
+                  <SelectControl
+                    name="displayType"
+                    options={Object.keys(displayTypes).map(value => ({
+                      label: displayTypes[value],
+                      value,
+                    }))}
+                    value={displayType}
+                    onChange={(option: {label: string; value: DisplayType}) => {
+                      this.handleFieldChange('displayType', option.value);
+                    }}
+                  />
+                  <WidgetCard
+                    api={this.api}
+                    organization={organization}
+                    selection={selection}
+                    widget={{title, queries, displayType, interval}}
+                    isEditing={false}
+                    onDelete={() => undefined}
+                    onEdit={() => undefined}
+                    renderErrorMessage={errorMessage =>
+                      typeof errorMessage === 'string' && (
+                        <PanelAlert type="error">{errorMessage}</PanelAlert>
+                      )
+                    }
+                    isSorting={false}
+                    currentWidgetDragging={false}
+                  />
+                </VisualizationWrapper>
+              </BuildStep>
+              <ChooseDataSetStep value={DataSet.EVENTS} onChange={onChangeDataSet} />
+              <BuildStep
+                title={t('Begin your search')}
+                description={t('Add another query to compare projects, tags, etc.')}
+              >
+                <Queries
+                  queries={queries}
+                  selectedProjectIds={selection.projects}
+                  organization={organization}
+                  displayType={displayType}
+                  onRemoveQuery={this.handleRemoveQuery}
+                  onAddQuery={this.handleAddQuery}
+                  onChangeQuery={this.handleChangeQuery}
+                />
+              </BuildStep>
+              <Measurements>
+                {({measurements}) => {
+                  const measurementKeys = Object.values(measurements).map(({key}) => key);
+                  const amendedFieldOptions = fieldOptions(measurementKeys);
+                  const buildStepContent = (
+                    <WidgetQueryFields
+                      style={{padding: 0}}
+                      displayType={displayType}
+                      fieldOptions={amendedFieldOptions}
+                      fields={queries[0].fields}
+                      onChange={fields => {
+                        queries.forEach((query, queryIndex) => {
+                          const clonedQuery = cloneDeep(query);
+                          clonedQuery.fields = fields;
+                          this.handleChangeQuery(queryIndex, clonedQuery);
+                        });
                       }}
                     />
                   );
