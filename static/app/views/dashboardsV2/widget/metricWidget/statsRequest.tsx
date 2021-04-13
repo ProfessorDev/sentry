@@ -27,7 +27,7 @@ type ChildrenArgs = {
 type Props = {
   api: Client;
   organization: Organization;
-  projectId: Project['id'];
+  projectSlug: Project['slug'];
   queries: MetricQuery[];
   environments: GlobalSelection['environments'];
   datetime: GlobalSelection['datetime'];
@@ -39,7 +39,7 @@ type Props = {
 function StatsRequest({
   api,
   organization,
-  projectId,
+  projectSlug,
   queries,
   environments,
   datetime,
@@ -53,7 +53,7 @@ function StatsRequest({
 
   useEffect(() => {
     fetchData();
-  }, [projectId, environments, datetime, queries, yAxis]);
+  }, [projectSlug, environments, datetime, queries, yAxis]);
 
   function fetchData() {
     if (!yAxis) {
@@ -68,17 +68,25 @@ function StatsRequest({
 
     setIsLoading(true);
 
+    const requestExtraParams = getParams(
+      pick(
+        location.query,
+        Object.values(URL_PARAM).filter(param => param !== URL_PARAM.PROJECT)
+      )
+    );
+
     const promises = queriesWithAggregation.map(({aggregation, groupBy}) => {
-      return api.requestPromise(`/organizations/${organization.slug}/sessions/`, {
-        query: {
-          project: projectId,
-          environment: environments,
-          groupBy: groupBy || null,
-          field: `${aggregation}(${yAxis})`,
-          interval: getInterval(datetime),
-          ...getParams(pick(location.query, Object.values(URL_PARAM))),
-        },
-      });
+      return api.requestPromise(
+        `/projects/${organization.slug}/${projectSlug}/metrics/data/`,
+        {
+          query: {
+            groupBy: groupBy || null,
+            field: `${aggregation}(${yAxis})`,
+            interval: getInterval(datetime),
+            ...requestExtraParams,
+          },
+        }
+      );
     });
 
     Promise.all(promises)

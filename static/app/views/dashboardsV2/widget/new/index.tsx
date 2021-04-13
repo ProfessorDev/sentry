@@ -20,19 +20,7 @@ type Props = RouteComponentProps<RouteParams, {}> & {
 };
 
 function WidgetNewContainer({organization, ...props}: Props) {
-  return (
-    <Feature
-      features={['metrics']}
-      organization={organization}
-      renderDisabled={() => (
-        <PageContent>
-          <Alert type="warning">{t("You don't have access to this feature")}</Alert>
-        </PageContent>
-      )}
-    >
-      <WidgetNew {...props} organization={organization} />
-    </Feature>
-  );
+  return <WidgetNew {...props} organization={organization} />;
 }
 
 export default withOrganization(WidgetNewContainer);

@@ -59,51 +59,34 @@ class MetricWidget extends AsyncView<Props, State> {
     };
   }
 
-  componentDidMount() {
-    this.fetchMetrics();
+  get project() {
+    const {projects, location} = this.props;
+    const {query} = location;
+    const {project: projectId} = query;
+
+    return projects.find(project => project.id === projectId);
+  }
+
+  getEndpoints(): ReturnType<AsyncView['getEndpoints']> {
+    const {organization, loadingProjects} = this.props;
+
+    if (this.isProjectMissingInUrl() || loadingProjects || !this.project) {
+      return [];
+    }
+
+    return [['metrics', `/projects/${organization.slug}/${this.project.slug}/metrics/`]];
   }
 
   componentDidUpdate(prevProps: Props, prevState: State) {
-    if (!this.isProjectMissingInUrl() && !this.state.metrics.length) {
-      this.fetchMetrics();
+    if (prevProps.loadingProjects && !this.props.loadingProjects) {
+      this.reloadData();
+    }
+
+    if (!prevState.metrics.length && !!this.state.metrics.length) {
+      this.handleMetricChange(this.state.metrics[0]);
     }
 
     super.componentDidUpdate(prevProps, prevState);
-  }
-
-  async fetchMetrics() {
-    if (this.isProjectMissingInUrl() || !!this.state.metrics.length) {
-      return;
-    }
-
-    try {
-      const newMetrics = await Promise.resolve([
-        {
-          name: 'session',
-          type: 'counter',
-          operations: ['sum'],
-          tags: ['session.status', 'project', 'release'],
-          unit: null,
-        },
-        {
-          name: 'user',
-          type: 'set',
-          operations: ['count_unique'],
-          tags: ['session.status', 'project', 'release'],
-          unit: null,
-        },
-        {
-          name: 'session.duration',
-          type: 'distribution',
-          operations: ['avg', 'p50', 'p75', 'p90', 'p95', 'p99', 'max'],
-          tags: ['session.status', 'project', 'release'],
-          unit: 'seconds',
-        },
-      ]);
-      this.setState({metrics: newMetrics});
-    } catch (error) {
-      this.setState({error});
-    }
   }
 
   handleTitleChange = (title: string) => {
@@ -111,7 +94,7 @@ class MetricWidget extends AsyncView<Props, State> {
   };
 
   handleMetricChange = (metric: Metric) => {
-    this.setState({metric, queries: [{...newQuery}]});
+    this.setState({metric, queries: [{...newQuery, aggregation: metric.operations[0]}]});
   };
 
   handleRemoveQuery = (index: number) => {
@@ -172,21 +155,19 @@ class MetricWidget extends AsyncView<Props, State> {
       loadingProjects,
     } = this.props;
     const {title, metrics, metric, queries} = this.state;
-    const {query} = location;
-    const {project: projectId} = query;
     const orgSlug = organization.slug;
 
     if (loadingProjects) {
       return this.renderLoading();
     }
 
-    const selectedProject = projects.find(project => project.id === projectId);
+    const project = this.project;
 
-    if (this.isProjectMissingInUrl() || !selectedProject) {
+    if (this.isProjectMissingInUrl() || !project) {
       return (
         <PickProjectToContinue
           router={router}
-          projects={projects.map(project => ({id: project.id, slug: project.slug}))}
+          projects={projects.map(p => ({id: p.id, slug: p.slug}))}
           nextPath={`/organizations/${orgSlug}/dashboards/widget/new/?dataSet=metrics`}
           noProjectRedirectPath={`/organizations/${orgSlug}/dashboards/`}
         />
@@ -213,7 +194,7 @@ class MetricWidget extends AsyncView<Props, State> {
                 selection={selection}
                 organization={organization}
                 api={this.api}
-                project={selectedProject}
+                project={project}
                 widget={{
                   title,
                   queries,
@@ -230,6 +211,7 @@ class MetricWidget extends AsyncView<Props, State> {
                   choices={metrics.map(m => [m, m.name])}
                   placeholder={t('Select metric')}
                   onChange={this.handleMetricChange}
+                  value={metric}
                   components={{
                     Option: ({
                       label,
@@ -260,7 +242,7 @@ class MetricWidget extends AsyncView<Props, State> {
               >
                 <Queries
                   organization={organization}
-                  projectId={selectedProject.id}
+                  projectId={project.id}
                   metrics={metrics}
                   metric={metric}
                   queries={queries}
