@@ -2011,6 +2011,7 @@ export type CodeOwners = {
   dateCreated: string;
   dateUpdated: string;
   provider: 'github' | 'gitlab';
+  codeMapping?: RepositoryProjectPathConfig[];
 };
 
 export type KeyValueListData = {
