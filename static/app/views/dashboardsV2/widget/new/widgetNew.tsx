@@ -4,9 +4,9 @@ import {RouteComponentProps} from 'react-router';
 import Alert from 'app/components/alert';
 import {IconWarning} from 'app/icons';
 import {t} from 'app/locale';
-import {PageContent} from 'app/styles/organization';
 import {Organization} from 'app/types';
 
+import {DashboardDetails, Widget} from '../../types';
 import EventWidget from '../eventWidget';
 import MetricWidget from '../metricWidget';
 import {DataSet} from '../utils';
@@ -17,6 +17,9 @@ type RouteParams = {
 
 type Props = RouteComponentProps<RouteParams, {}> & {
   organization: Organization;
+  dashboard: DashboardDetails;
+  onSave: (widgets: Widget[]) => void;
+  widget?: Widget;
 };
 
 function WidgetNew(props: Props) {
@@ -83,7 +86,7 @@ function WidgetNew(props: Props) {
   }
 
   if (dataSet === DataSet.EVENTS) {
-    return <EventWidget onChangeDataSet={handleDataSetChange} />;
+    return <EventWidget {...props} onChangeDataSet={handleDataSetChange} />;
   }
 
   return <MetricWidget {...props} onChangeDataSet={handleDataSetChange} />;

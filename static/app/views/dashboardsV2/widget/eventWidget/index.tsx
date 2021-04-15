@@ -1,8 +1,11 @@
 import React from 'react';
 import styled from '@emotion/styled';
 import cloneDeep from 'lodash/cloneDeep';
+import pick from 'lodash/pick';
 import set from 'lodash/set';
 
+import {validateWidget} from 'app/actionCreators/dashboards';
+import {addSuccessMessage} from 'app/actionCreators/indicator';
 import WidgetQueryFields from 'app/components/dashboards/widgetQueryFields';
 import SelectControl from 'app/components/forms/selectControl';
 import * as Layout from 'app/components/layouts/thirds';
@@ -17,7 +20,12 @@ import withGlobalSelection from 'app/utils/withGlobalSelection';
 import withOrganization from 'app/utils/withOrganization';
 import withTags from 'app/utils/withTags';
 import AsyncView from 'app/views/asyncView';
-import {DisplayType, Widget, WidgetQuery} from 'app/views/dashboardsV2/types';
+import {
+  DashboardDetails,
+  DisplayType,
+  Widget,
+  WidgetQuery,
+} from 'app/views/dashboardsV2/types';
 import WidgetCard from 'app/views/dashboardsV2/widgetCard';
 import {generateFieldOptions} from 'app/views/eventsV2/utils';
 
@@ -26,7 +34,7 @@ import BuildStep from '../buildStep';
 import BuildSteps from '../buildSteps';
 import ChooseDataSetStep from '../choseDataStep';
 import Header from '../header';
-import {DataSet, displayTypes} from '../utils';
+import {DataSet, displayTypes, mapErrors} from '../utils';
 
 import Queries from './queries';
 
@@ -42,6 +50,11 @@ type Props = AsyncView['props'] & {
   onChangeDataSet: (dataSet: DataSet) => void;
   selection: GlobalSelection;
   tags: TagCollection;
+  dashboard: DashboardDetails;
+  //onAddWidget: (data: Widget) => void;
+  onSave: (widgets: Widget[]) => void;
+  widget?: Widget;
+  //onUpdateWidget?: (nextWidget: Widget) => void;
 };
 
 type State = AsyncView['state'] & {
@@ -90,6 +103,48 @@ class EventWidget extends AsyncView<Props, State> {
     });
   };
 
+  handleSave = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    const {
+      organization,
+      onSave,
+      dashboard,
+      // onAddWidget,
+      // onUpdateWidget,
+      // widget: previousWidget,
+    } = this.props;
+    this.setState({loading: true});
+    try {
+      const widgetData: Widget = pick(this.state, [
+        'title',
+        'displayType',
+        'interval',
+        'queries',
+      ]);
+
+      await validateWidget(this.api, organization.slug, widgetData);
+
+      // if (typeof onUpdateWidget === 'function' && !!previousWidget) {
+      //   // onUpdateWidget({
+      //   //   id: previousWidget?.id,
+      //   //   ...widgetData,
+      //   // });
+      //   addSuccessMessage(t('Updated widget.'));
+      //   return;
+      // }
+
+      // onAddWidget(widgetData);
+      onSave([...dashboard.widgets, widgetData]);
+      addSuccessMessage(t('Added widget.'));
+    } catch (err) {
+      const errors = mapErrors(err?.responseJSON ?? {}, {});
+      this.setState({errors});
+    } finally {
+      this.setState({loading: false});
+    }
+  };
+
   renderBody() {
     const {organization, onChangeDataSet, selection, tags} = this.props;
     const {title, displayType, queries, interval} = this.state;
@@ -104,6 +159,7 @@ class EventWidget extends AsyncView<Props, State> {
     }
 
     return (
+<<<<<<< HEAD
       <GlobalSelectionHeader
         skipLoadLastUsed={organization.features.includes('global-views')}
         defaultSelection={{
@@ -190,6 +246,45 @@ class EventWidget extends AsyncView<Props, State> {
                           clonedQuery.fields = fields;
                           this.handleChangeQuery(queryIndex, clonedQuery);
                         });
+=======
+      <Wrapper>
+        <GlobalSelectionHeader
+          skipLoadLastUsed={organization.features.includes('global-views')}
+          defaultSelection={{
+            datetime: {
+              start: null,
+              end: null,
+              utc: false,
+              period: DEFAULT_STATS_PERIOD,
+            },
+          }}
+        >
+          <StyledPageContent>
+            <Header
+              orgSlug={orgSlug}
+              title={title}
+              onChangeTitle={newTitle => this.handleFieldChange('title', newTitle)}
+              onSave={this.handleSave}
+            />
+            <Layout.Body>
+              <BuildSteps>
+                <BuildStep
+                  title={t('Choose your visualization')}
+                  description={t(
+                    'This is a preview of how your widget will appear in the dashboard.'
+                  )}
+                >
+                  <VisualizationWrapper>
+                    <SelectControl
+                      name="displayType"
+                      options={Object.keys(displayTypes).map(value => ({
+                        label: displayTypes[value],
+                        value,
+                      }))}
+                      value={displayType}
+                      onChange={(option: {label: string; value: DisplayType}) => {
+                        this.handleFieldChange('displayType', option.value);
+>>>>>>> wip
                       }}
                     />
                   );

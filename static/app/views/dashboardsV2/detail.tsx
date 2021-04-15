@@ -58,6 +58,32 @@ class DashboardDetail extends React.Component<Props, State> {
     window.removeEventListener('beforeunload', this.onUnload);
   }
 
+<<<<<<< HEAD
+=======
+  checkStateRoute() {
+    if (this.isWidgetBuilderRouter && !this.isEditing) {
+      const {router, organization, params} = this.props;
+      const {dashboardId} = params;
+      router.replace(`/organizations/${organization.slug}/dashboards/${dashboardId}/`);
+    }
+  }
+
+  get isEditing() {
+    const {dashboardState} = this.state;
+    return ['edit', 'create', 'pending_delete'].includes(dashboardState);
+  }
+
+  get isWidgetBuilderRouter() {
+    const {location, params, organization} = this.props;
+    const {dashboardId} = params;
+
+    return (
+      location.pathname ===
+      `/organizations/${organization.slug}/dashboards/${dashboardId}/widget/new/`
+    );
+  }
+
+>>>>>>> wip
   onEdit = (dashboard: State['modifiedDashboard']) => () => {
     if (!dashboard) {
       return;
@@ -290,6 +316,95 @@ class DashboardDetail extends React.Component<Props, State> {
     });
   };
 
+<<<<<<< HEAD
+=======
+  updateRoute() {
+    if (this.isWidgetBuilderRouter) {
+      const {router, organization, params} = this.props;
+      const {dashboardId} = params;
+      router.replace(`/organizations/${organization.slug}/dashboards/${dashboardId}/`);
+    }
+  }
+
+  onSaveWidget = (widgets: Widget[]) => {
+    const {modifiedDashboard} = this.state;
+
+    if (modifiedDashboard === null) {
+      return;
+    }
+
+    this.setState(
+      (state: State) => ({
+        ...state,
+        modifiedDashboard: {
+          ...state.modifiedDashboard!,
+          widgets,
+        },
+      }),
+      this.updateRoute
+    );
+  };
+
+  renderDetails({
+    dashboard,
+    dashboards,
+    reloadData,
+    error,
+  }: Parameters<OrgDashboards['props']['children']>[0]) {
+    const {params, organization} = this.props;
+    const {dashboardId} = params;
+    const {modifiedDashboard, dashboardState} = this.state;
+
+    return (
+      <React.Fragment>
+        <StyledPageHeader>
+          <DashboardTitle
+            dashboard={modifiedDashboard || dashboard}
+            onUpdate={this.setModifiedDashboard}
+            isEditing={this.isEditing}
+          />
+          <Controls
+            organization={organization}
+            dashboards={dashboards}
+            dashboard={dashboard}
+            onEdit={this.onEdit(dashboard)}
+            onCreate={this.onCreate}
+            onCancel={this.onCancel}
+            onCommit={this.onCommit({dashboard, reloadData})}
+            onDelete={this.onDelete(dashboard)}
+            dashboardState={dashboardState}
+          />
+        </StyledPageHeader>
+        {error ? (
+          <NotFound />
+        ) : dashboard ? (
+          <Dashboard
+            dashboardId={dashboardId}
+            dashboard={modifiedDashboard || dashboard}
+            organization={organization}
+            isEditing={this.isEditing}
+            onUpdate={this.onWidgetChange}
+          />
+        ) : (
+          <LoadingIndicator />
+        )}
+      </React.Fragment>
+    );
+  }
+
+  renderWidgetBuilder(dashboard: DashboardDetails | null) {
+    const {children} = this.props;
+    const {modifiedDashboard} = this.state;
+
+    return React.isValidElement(children)
+      ? React.cloneElement(children, {
+          dashboard: modifiedDashboard || dashboard,
+          onSave: this.onSaveWidget,
+        })
+      : children;
+  }
+
+>>>>>>> wip
   render() {
     const {api, location, params, organization} = this.props;
     const {modifiedDashboard, dashboardState} = this.state;
@@ -315,6 +430,7 @@ class DashboardDetail extends React.Component<Props, State> {
           organization={organization}
         >
           {({dashboard, dashboards, error, reloadData}) => {
+<<<<<<< HEAD
             return (
               <React.Fragment>
                 <StyledPageHeader>
@@ -349,6 +465,12 @@ class DashboardDetail extends React.Component<Props, State> {
                 )}
               </React.Fragment>
             );
+=======
+            if (this.isEditing && this.isWidgetBuilderRouter) {
+              return this.renderWidgetBuilder(dashboard);
+            }
+            return this.renderDetails({dashboard, dashboards, error, reloadData});
+>>>>>>> wip
           }}
         </OrgDashboards>
       </GlobalSelectionHeader>

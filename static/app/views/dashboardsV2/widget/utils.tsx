@@ -23,3 +23,31 @@ export const displayTypes = {
   [DisplayType.WORLD_MAP]: t('World Map'),
   [DisplayType.BIG_NUMBER]: t('Big Number'),
 };
+
+type ValidationError = {
+  [key: string]: string[] | ValidationError[] | ValidationError;
+};
+
+type FlatValidationError = {
+  [key: string]: string | FlatValidationError[] | FlatValidationError;
+};
+
+export function mapErrors(
+  data: ValidationError,
+  update: FlatValidationError
+): FlatValidationError {
+  Object.keys(data).forEach((key: string) => {
+    const value = data[key];
+    // Recurse into nested objects.
+    if (Array.isArray(value) && typeof value[0] === 'string') {
+      update[key] = value[0];
+      return;
+    } else if (Array.isArray(value) && typeof value[0] === 'object') {
+      update[key] = (value as ValidationError[]).map(item => mapErrors(item, {}));
+    } else {
+      update[key] = mapErrors(value as ValidationError, {});
+    }
+  });
+
+  return update;
+}
