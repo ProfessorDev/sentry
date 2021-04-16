@@ -1,16 +1,13 @@
 import React from 'react';
 import {RouteComponentProps} from 'react-router';
-import {components, OptionProps} from 'react-select';
 import styled from '@emotion/styled';
 import {withTheme} from 'emotion-theming';
 import cloneDeep from 'lodash/cloneDeep';
 import set from 'lodash/set';
 
-import Highlight from 'app/components/highlight';
 import * as Layout from 'app/components/layouts/thirds';
 import GlobalSelectionHeader from 'app/components/organizations/globalSelectionHeader';
 import PickProjectToContinue from 'app/components/pickProjectToContinue';
-import Tooltip from 'app/components/tooltip';
 import {t} from 'app/locale';
 import {PageContent} from 'app/styles/organization';
 import space from 'app/styles/space';
@@ -31,12 +28,12 @@ import Card from './card';
 import Queries from './queries';
 import {Metric, MetricQuery} from './types';
 
-const newQuery = {
-  tags: '',
-  groupBy: '',
-  aggregation: '',
-  legend: '',
-};
+const metricDisplayTypes = Object.keys(displayTypes).filter(
+  displayType =>
+    displayType !== DisplayType.BIG_NUMBER &&
+    displayType !== DisplayType.TABLE &&
+    displayType !== DisplayType.WORLD_MAP
+);
 
 type RouteParams = {
   dashboardId: string;
@@ -120,7 +117,7 @@ class MetricWidget extends AsyncView<Props, State> {
   handleAddQuery = () => {
     this.setState(state => {
       const newState = cloneDeep(state);
-      newState.queries.push(cloneDeep(newQuery));
+      newState.queries.push({});
       return newState;
     });
   };
@@ -170,7 +167,7 @@ class MetricWidget extends AsyncView<Props, State> {
       location,
       loadingProjects,
       params,
-      theme,
+      // theme,
     } = this.props;
     const {dashboardId} = params;
     const {title, metrics, metric, queries, displayType} = this.state;
@@ -217,64 +214,13 @@ class MetricWidget extends AsyncView<Props, State> {
                 <VisualizationWrapper>
                   <StyledSelectField
                     name="displayType"
-                    choices={Object.keys(displayTypes).map(value => [
+                    choices={metricDisplayTypes.map(value => [
                       value,
                       displayTypes[value],
                     ])}
                     value={displayType}
                     onChange={(option: {label: string; value: DisplayType}) => {
-                      const isDisabled = option.value !== DisplayType.LINE;
-
-                      if (isDisabled) {
-                        return;
-                      }
-
                       this.handleFieldChange('displayType', option.value);
-                    }}
-                    styles={{
-                      option: (provided, state) => {
-                        if (state.isDisabled) {
-                          return {
-                            ...provided,
-                            cursor: 'not-allowed',
-                            color: theme.disabled,
-                            ':hover': {
-                              background: 'transparent',
-                            },
-                          };
-                        }
-                        return provided;
-                      },
-                    }}
-                    components={{
-                      Option: ({
-                        label,
-                        data,
-                        ...optionProps
-                      }: OptionProps<{
-                        label: string;
-                        value: string;
-                      }>) => {
-                        const {value} = data;
-                        const isDisabled = value !== DisplayType.LINE;
-
-                        return (
-                          <Tooltip
-                            title={t('This option is not yet available')}
-                            containerDisplayMode="block"
-                            disabled={!isDisabled}
-                          >
-                            <components.Option
-                              {...optionProps}
-                              label={label}
-                              data={data}
-                              isDisabled={isDisabled}
-                            >
-                              {label}
-                            </components.Option>
-                          </Tooltip>
-                        );
-                      },
                     }}
                     inline={false}
                     flexibleControlStateSize
@@ -297,40 +243,6 @@ class MetricWidget extends AsyncView<Props, State> {
                 </VisualizationWrapper>
               </BuildStep>
               <ChooseDataSetStep value={DataSet.METRICS} onChange={onChangeDataSet} />
-              <BuildStep
-                title={t('Choose your y-axis metric')}
-                description={t('Determine what type of metric you want to graph by.')}
-              >
-                <StyledSelectField
-                  name="metric"
-                  choices={metrics.map(m => [m, m.name])}
-                  placeholder={t('Select metric')}
-                  onChange={this.handleMetricChange}
-                  value={metric}
-                  components={{
-                    Option: ({
-                      label,
-                      ...optionProps
-                    }: OptionProps<{
-                      label: string;
-                      value: string;
-                    }>) => {
-                      const {selectProps} = optionProps;
-                      const {inputValue} = selectProps;
-
-                      return (
-                        <components.Option label={label} {...optionProps}>
-                          <Highlight text={inputValue ?? ''}>{label}</Highlight>
-                        </components.Option>
-                      );
-                    },
-                  }}
-                  inline={false}
-                  flexibleControlStateSize
-                  stacked
-                  allowClear
-                />
-              </BuildStep>
               <BuildStep
                 title={t('Begin your search')}
                 description={t('Add another query to compare projects, tags, etc.')}

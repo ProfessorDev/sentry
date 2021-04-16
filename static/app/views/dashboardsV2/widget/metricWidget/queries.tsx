@@ -1,8 +1,10 @@
 import React from 'react';
+import {components, OptionProps} from 'react-select';
 import styled from '@emotion/styled';
 
 import {Client} from 'app/api';
 import Button from 'app/components/button';
+import Highlight from 'app/components/highlight';
 import {IconAdd, IconDelete} from 'app/icons';
 import {t} from 'app/locale';
 import space from 'app/styles/space';
@@ -10,7 +12,7 @@ import {Organization, Project} from 'app/types';
 import Input from 'app/views/settings/components/forms/controls/input';
 import SelectField from 'app/views/settings/components/forms/selectField';
 
-import SearchBar from './searchBar';
+import MetricSelectField from './metricSelectField';
 import {Metric, MetricQuery} from './types';
 
 type Props = {
@@ -26,9 +28,9 @@ type Props = {
 };
 
 function Queries({
-  api,
-  orgSlug,
-  projectSlug,
+  // api,
+  // orgSlug,
+  // projectSlug,
   metrics,
   queries,
   onRemoveQuery,
@@ -38,31 +40,28 @@ function Queries({
 }: Props) {
   function handleFieldChange(queryIndex: number, field: keyof MetricQuery) {
     const widgetQuery = queries[queryIndex];
-    return function handleChange(value: string | string[]) {
+    return function handleChange(value?: string | string[] | Metric) {
       const newQuery = {...widgetQuery, [field]: value};
       onChangeQuery(queryIndex, newQuery);
     };
   }
 
-  const aggregations = metric
-    ? metrics.find(m => m.name === metric.name)?.operations ?? []
-    : [];
+  // const aggregations = metric
+  //   ? metrics.find(m => m.name === metric.name)?.operations ?? []
+  //   : [];
 
   return (
     <Wrapper>
       {queries.map((query, queryIndex) => {
         return (
           <Fields displayDeleteButton={queries.length > 1} key={queryIndex}>
-            <SearchBar
-              api={api}
-              metricName={metric?.name ?? ''}
-              tags={metric?.tags ?? []}
-              orgSlug={orgSlug}
-              projectSlug={projectSlug}
-              query={query.tags}
-              onBlur={value => handleFieldChange(queryIndex, 'tags')(value)}
+            <MetricSelectField
+              metrics={metrics}
+              metric={query.metric}
+              aggregation={query.aggregation}
+              onChange={(field, value) => handleFieldChange(queryIndex, field)(value)}
             />
-            <StyledSelectField
+            {/* <StyledSelectField
               name="groupBy"
               placeholder={t('Select Group By')}
               choices={(metric?.tags ?? []).map(tag => [tag, tag])}
@@ -74,18 +73,7 @@ function Queries({
               allowClear={false}
               flexibleControlStateSize
               stacked
-            />
-            <StyledSelectField
-              name="aggregation"
-              placeholder={t('Select Aggregation')}
-              choices={aggregations.map(aggregation => [aggregation, aggregation])}
-              value={query.aggregation}
-              onChange={value => handleFieldChange(queryIndex, 'aggregation')(value)}
-              inline={false}
-              allowClear={false}
-              flexibleControlStateSize
-              stacked
-            />
+            /> */}
             <Input
               type="text"
               name="legend"
@@ -169,10 +157,10 @@ const Wrapper = styled('div')`
   }
 `;
 
-const StyledSelectField = styled(SelectField)`
-  padding-right: 0;
-  padding-bottom: 0;
-`;
+// const StyledSelectField = styled(SelectField)`
+//   padding-right: 0;
+//   padding-bottom: 0;
+// `;
 
 const ButtonDeleteWrapper = styled('div')`
   display: flex;
