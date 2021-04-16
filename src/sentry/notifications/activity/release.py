@@ -189,7 +189,9 @@ class ReleaseActivityNotification(ActivityNotification):
             "setup_repo_link": absolute_uri(f"/organizations/{self.organization.slug}/repos/"),
         }
 
-    def get_user_context(self, user: User) -> MutableMapping[str, Any]:
+    def get_user_context(
+        self, user: User, reason: Optional[int] = None
+    ) -> MutableMapping[str, Any]:
         if user.is_superuser or self.organization.flags.allow_joinleave:
             projects = self.projects
         else:
@@ -210,6 +212,7 @@ class ReleaseActivityNotification(ActivityNotification):
 
         resolved_issue_counts = [self.group_counts_by_project.get(p.id, 0) for p in projects]
         return {
+            **super().get_user_context(user, reason),
             "projects": zip(projects, release_links, resolved_issue_counts),
             "project_count": len(projects),
         }
