@@ -1,5 +1,5 @@
 import re
-from typing import Any, Callable, Iterable, Mapping, MutableMapping, Set, Tuple
+from typing import Any, Mapping, MutableMapping, Optional, Set, Tuple
 from urllib.parse import urlparse, urlunparse
 
 from django.core.urlresolvers import reverse
@@ -7,30 +7,12 @@ from django.utils.html import escape, mark_safe
 from django.utils.safestring import SafeString
 
 from sentry.models import Activity, GroupSubscription, User, UserAvatar, UserOption
+from sentry.notifications.notify import notify
 from sentry.notifications.types import GroupSubscriptionReason
 from sentry.types.integrations import ExternalProviders
 from sentry.utils.assets import get_asset_url
 from sentry.utils.avatar import get_email_avatar
 from sentry.utils.http import absolute_uri
-
-registry: MutableMapping[ExternalProviders, Callable] = {}
-
-
-def notification_providers() -> Iterable[ExternalProviders]:
-    return registry.keys()
-
-
-def register(provider: ExternalProviders) -> Callable:
-    """
-    A wrapper that adds the wrapped function to the send_notification_registry
-    (see above) for the provider.
-    """
-
-    def wrapped(send_notification: Callable) -> Callable:
-        registry[provider] = send_notification
-        return send_notification
-
-    return wrapped
 
 
 class ActivityNotification:
@@ -235,4 +217,4 @@ class ActivityNotification:
         shared_context = self.get_context()
 
         for provider, participants in participants_by_provider.items():
-            registry[provider](self, participants, shared_context)
+            notify(provider, self, participants, shared_context)
