@@ -5,7 +5,7 @@ from .base import ActivityNotification
 
 class NoteActivityNotification(ActivityNotification):
     def get_context(self) -> MutableMapping[str, Any]:
-        return {}
+        return self.get_base_context()
 
     def get_template(self) -> str:
         return "sentry/emails/activity/note.txt"
