@@ -31,7 +31,7 @@ function Header({title, orgSlug, onChangeTitle}: Props) {
             value={title}
             onChange={onChangeTitle}
             errorMessage={t('Please set a title for this dashboard widge')}
-            successMessage={t('Dashboard widge title saved successfully')}
+            successMessage={t('Dashboard widget title saved successfully')}
           />
         </Layout.Title>
       </Layout.HeaderContent>
